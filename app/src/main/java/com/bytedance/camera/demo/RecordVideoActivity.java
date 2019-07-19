@@ -3,10 +3,16 @@ package com.bytedance.camera.demo;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+import android.view.MotionEvent;
+import android.view.View;
 import android.widget.VideoView;
 
 public class RecordVideoActivity extends AppCompatActivity {
@@ -16,18 +22,42 @@ public class RecordVideoActivity extends AppCompatActivity {
 
     private static final int REQUEST_EXTERNAL_CAMERA = 101;
 
+    private String[] mPermissionsArrays = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO};
+    private final static int REQUEST_PERMISSION = 123;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_record_video);
 
         videoView = findViewById(R.id.img);
+        videoView.setOnTouchListener(new VideoView.OnTouchListener(){
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if(videoView.isPlaying()){
+                    videoView.pause();
+                }else
+                {
+                    videoView.start();
+                }
+                return false;
+            }
+        });
         findViewById(R.id.btn_picture).setOnClickListener(v -> {
             if (ContextCompat.checkSelfPermission(RecordVideoActivity.this,
                     Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                 //todo 在这里申请相机、存储的权限
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
+                    requestPermissions(mPermissionsArrays, REQUEST_PERMISSION);
+                }
             } else {
                 //todo 打开相机拍摄
+                Intent takeVideoIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
+                if(takeVideoIntent.resolveActivity(getPackageManager()) != null){
+                    startActivityForResult(takeVideoIntent, REQUEST_VIDEO_CAPTURE);
+                }
             }
         });
 
@@ -38,6 +68,9 @@ public class RecordVideoActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, intent);
         if (requestCode == REQUEST_VIDEO_CAPTURE && resultCode == RESULT_OK) {
             //todo 播放刚才录制的视频
+            Uri videoUri = intent.getData();
+            videoView.setVideoURI(videoUri);
+            videoView.start();
         }
     }
 
